@@ -12,7 +12,7 @@ import pretrainedmodels
 from .dataset.custom_dataset import CustomDataset
 from .transforms.transforms import RandomResizedCrop
 from .utils.logger import log
-
+from efficientnet_pytorch import EfficientNet
 
 def get_loss(cfg):
     #loss = getattr(nn, cfg.loss.name)(**cfg.loss.params)
@@ -47,7 +47,14 @@ def get_model(cfg):
         model = torch.hub.load('facebookresearch/WSL-Images', cfg.model.name)
         model.fc = torch.nn.Linear(2048, cfg.model.n_output)
         return model
-
+    
+    if cfg.model.name in ['efficientnet-b0','efficientnet-b1','efficientnet-b2','efficientnet-b3','efficientnet-b4','efficientnet-b5','efficientnet-b6','efficientnet-b7']:
+        if cfg.model.pretrained:
+            model =  EfficientNet.from_pretrained(cfg.model.name, num_classes=cfg.model.n_output)
+        else :
+            model =  EfficientNet.from_name(cfg.model.name, num_classes=cfg.model.n_output)
+        return model
+    
     try:
         model_func = pretrainedmodels.__dict__[cfg.model.name]
     except KeyError as e:
