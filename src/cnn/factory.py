@@ -49,7 +49,7 @@ def get_model(cfg):
         return model
     
     if cfg.model.name in ['efficientnet-b0','efficientnet-b1','efficientnet-b2','efficientnet-b3','efficientnet-b4','efficientnet-b5','efficientnet-b6','efficientnet-b7']:
-        if cfg.model.pretrained:
+        if cfg.model.pretrained is not None:
             model =  EfficientNet.from_pretrained(cfg.model.name, num_classes=cfg.model.n_output)
         else :
             model =  EfficientNet.from_name(cfg.model.name, num_classes=cfg.model.n_output)
