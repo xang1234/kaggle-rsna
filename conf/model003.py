@@ -6,7 +6,7 @@ n_fold = 5
 epoch = 3
 resume_from = None
 
-batch_size = 28
+batch_size = 20
 num_workers = 4
 imgsize = (512, 512) #(height, width)
 
@@ -23,7 +23,7 @@ optim = dict(
 )
 
 model = dict(
-    name='efficientnet-b0',
+    name='efficientnet-b3',
     pretrained='imagenet',
     n_output=6,
 )
