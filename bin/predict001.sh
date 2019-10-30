@@ -1,4 +1,4 @@
-model=model001
+model=model003
 gpu=0
 fold=0
 ep=1
