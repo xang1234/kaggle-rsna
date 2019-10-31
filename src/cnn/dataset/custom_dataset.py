@@ -11,7 +11,20 @@ import pydicom
 from .. import factory
 from ..utils.logger import log
 from ...utils import mappings, misc
+import skimage
 
+def image_histogram_equalization(image, number_bins=256):
+    # from http://www.janeriksolem.net/2009/06/histogram-equalization-with-python-and.html
+
+    # get image histogram
+    image_histogram, bins = np.histogram(image.flatten(), number_bins, density=True)
+    cdf = image_histogram.cumsum() # cumulative distribution function
+    cdf = 255 * cdf / cdf[-1] # normalize
+
+    # use linear interpolation of cdf to find new pixel values
+    image_equalized = np.interp(image.flatten(), bins[:-1], cdf)
+
+    return image_equalized.reshape(image.shape)
 
 def apply_window_policy(image, row, policy):
     if policy == 1:
@@ -26,6 +39,20 @@ def apply_window_policy(image, row, policy):
             image2 - image2.mean(),
             image3 - image3.mean(),
         ]).transpose(1,2,0)
+
+    if policy == 3:
+        image1 = misc.apply_window(image, 40, 80) # brain
+        image2 = misc.apply_window(image, 80, 200) # subdural
+        image3 = misc.apply_window(image, 40, 380) # bone
+        image1 = (image1 - 0) / 80
+        image2 = (image2 - (-20)) / 200
+        image3 = (image3 - (-150)) / 380
+        #temp = np.array([image1, image2, image3])
+        image1 = skimage.exposure.equalize_adapthist(image1,kernel_size=64)
+        image2 = skimage.exposure.equalize_adapthist(image2,kernel_size=64)	#image2 = skimage.exposure.equalize_adapthist(image2,kernel_size=64)
+        image3 = skimage.exposure.equalize_adapthist(image3,kernel_size=64)	#image3 = skimage.exposure.equalize_adapthist(image3,kernel_size=64)
+        image  = np.array([image1,image2,image3]).transpose(1,2,0)	#image = np.array([image1,image2,image3])
+
     elif policy == 2:
         image1 = misc.apply_window(image, 40, 80) # brain
         image2 = misc.apply_window(image, 80, 200) # subdural

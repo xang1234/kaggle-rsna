@@ -1,7 +1,7 @@
-model=model003
+model=model003_2
 gpu=0
-fold=0
-ep=1
+fold=3
+ep=2
 tta=5
 clip=1e-6
 conf=./conf/${model}.py
