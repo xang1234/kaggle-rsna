@@ -1,36 +1,11 @@
 # RSNA Intracranial Hemorrhage Detection
 
-This is the project for [RSNA Intracranial Hemorrhage Detection](https://www.kaggle.com/c/rsna-intracranial-hemorrhage-detection) hosted on Kaggle in 2019.
+This model is based on [Appian's kernel](https://github.com/appian42/kaggle-rsna-intracranial-hemorrhage)
 
 
-## Requirements
+## Environment
 
-- Python 3.6.6
-- [Pytorch](https://pytorch.org/) 1.1.0
-- [NVIDIA apex](https://github.com/NVIDIA/apex) 0.1 (for mixed precision training)
-
-
-## Performance (Single model)
-
-| Backbone | Image size | LB |
-----|----|----
-| se\_resnext50\_32x4d | 512x512 | 0.070 - 0.072 |
-
-
-## Windowing
-
-For this challenge, windowing is important to focus on the matter, in this case the brain and the blood. There are good kernels explaining how windowing works.
-
-- [See like a Radiologist with Systematic Windowing](https://www.kaggle.com/dcstang/see-like-a-radiologist-with-systematic-windowing) by David Tang
-- [RSNA IH Detection - EDA](https://www.kaggle.com/allunia/rsna-ih-detection-eda) by Allunia
-
-We used three types of windows to focus and assigned them to each of the chennel to construct images on the fly for training.
-
-| Channel | Matter | Window Center | Window Width |
-----------|--------|---------------|---------------
-| 0 | Brain | 40 | 80 |
-| 1 | Blood/Subdural | 80 | 200 |
-| 2 | Soft tissues | 40 | 380 |
+Refer to environment.yaml
 
 
 ## Preparation
@@ -38,37 +13,72 @@ We used three types of windows to focus and assigned them to each of the chennel
 Please put `./input` directory in the root level and unzip the file downloaded from kaggle there. All other directories such as `./cache`, `./data`, `./model` will be created if needed when `./bin/preprocess.sh` is run.
 
 
-## Preprocessing
+## Steps to produce predictions
 
-Please make sure you run the script from parent directory of `./bin`.
+### 1. Preprocessing
+
+Please make sure you run the script from parent directory of `./bin`. Run the following once :
 
 ~~~
 $ sh ./bin/preprocess.sh
 ~~~
 
-[preprocess.sh](https://github.com/appian42/kaggle-rsna-intracranial-hemorrhage/blob/master/bin/preprocess.sh) does the following at once.
+preprocess.sh does the following at once.
 
-- [dicom_to_dataframe.py](https://github.com/appian42/kaggle-rsna-intracranial-hemorrhage/blob/master/src/preprocess/dicom_to_dataframe.py) reads dicom files and save its metadata into the dataframe. 
-- [create_dataset.py](https://github.com/appian42/kaggle-rsna-intracranial-hemorrhage/blob/master/src/preprocess/create_dataset.py) creates a dataset for training.
-- [make_folds.py](https://github.com/appian42/kaggle-rsna-intracranial-hemorrhage/blob/master/src/preprocess/make_folds.py) makes folds for cross validation. 
+- dicom_to_dataframe.py(src/preprocess/dicom_to_dataframe.py) reads dicom files and save its metadata into the dataframe. 
+- create_dataset.py(src/preprocess/create_dataset.py) creates a dataset for training.
+- make_folds.py(src/preprocess/make_folds.py) makes folds for cross validation. 
 
 
-## Training
+### 2. Training
 
+There are 5 different model binaries and config files as per the table below. To run replace `x` with the desired model number. The desired fold has to be manually changed to the correct value in the `train00x.sh` file
 ~~~
-$ sh ./bin/train001.sh
-~~~
-
-[train.001.sh](https://github.com/appian42/kaggle-rsna-intracranial-hemorrhage/blob/master/bin/train001.sh) uses se\_resnext50\_32x4d from [pretrained-models.pytorch](https://github.com/Cadene/pretrained-models.pytorch) for training. 
-One epoch probably takes 20,000 seconds to train with a single 1080ti.
-
-
-## Predicting
-
-~~~
-$ sh ./bin/predict001.sh
+$ sh ./bin/train00x.sh
 ~~~
 
-[predict001.sh](https://github.com/appian42/kaggle-rsna-intracranial-hemorrhage/blob/master/bin/predict001.sh) does the predictions and makes a submission file for scoring on Kaggle. Please uncomment the last line if you want to automatically submit it to kaggle through API.
+| Model | Folds |  Backbone | Window Policy | Image size | 
+----|----|----|----|----
+| 001 | 0,1,2,3,4 | se\_resnext50\_32x4d | 2 |512x512 | 
+| 003 | 0,2,4 | efficientnet-b3 |2 |512x512 |
+| 003_2 | 3 | efficientnet-b3 | 3 |512x512 |
+| 004 | 0,1,2,3, | inceptionV4 |2 |512x512 |
+| 005 | 2 | efficientnet-b5 | 2 |512x512 |
+
+- running efficietnnet-b3 on fold 1 will produce an error during 1st epoch validation
+- only model003_2 uses Window Policy=3 which adds CLAHE preprocessing from scikit-image
+
+### 3. Predicting
+
+~~~
+$ sh ./bin/predict00x.sh
+~~~
+
+predict00x.sh does the predictions and makes a submission file for scoring on Kaggle. Each model has as separate .sh file but the fold number has to be manually updated each time. 
+
+### 4. Ensembling 
+
+- `ensemble1.py` (src/ensemble/ensemble1.py) ensembles all the models above to produce a submission file. The path to the file has to be updated accordingly
+- `ensemble2.py` (src/ensemble/ensemble2.py) ensembles all the models with public lb<=0.71 to produce a submission file. The path to the file has to be updated accordingly
 
 
+### 5. Retraining and ensembling 
+
+Once the public test data is released, retraining can be done if time permits by repeating step 2,3 and 4 (the data path has to be updated accordingly. Such files have the `_retrain` suffix. The config files will be reused
+
+| Model | Folds |  Backbone | Window Policy | Image size | 
+----|----|----|----|----
+| 001_retrain | 0,1,2,3,4 | se\_resnext50\_32x4d | 2 |512x512 | 
+| 003_retrain | 0,2,4 | efficientnet-b3 |2 |512x512 |
+| 003_2_retrain | 3 | efficientnet-b3 | 3 |512x512 |
+| 004_retrain | 0,1,2,3, | inceptionV4 |2 |512x512 |
+| 005_retrain | 2 | efficientnet-b5 | 2 |512x512 |
+
+Retraining allows us to generate 4 additional submissions
+
+- `ensemble3.py` (src/ensemble/ensemble1.py) ensembles all the `retrained` models above to produce a submission file. The path to the file has to be updated accordingly
+- `ensemble4.py` (src/ensemble/ensemble2.py) ensembles all the `retrained` models with public lb<=0.71 to produce a submission file as per ensemble2.py. The path to the file has to be updated accordingly (selection to be done based on Stage 1 public lb score only - Stage 2 public lb is likely to be too small anyway)
+- `ensemble5.py` (src/ensemble/ensemble1.py) ensembles all the `initial and retrained` models above to produce a submission file. The path to the file has to be updated accordingly
+- `ensemble6.py` (src/ensemble/ensemble2.py) ensembles all the `initial and retrained` models with public lb<=0.71 to produce a submission file as per ensemble2.py. The path to the file has to be updated accordingly (selection to be done based on Stage 1 public lb score only - Stage 2 public lb is likely to be too small anyway)
+
+If there is enough retraining time I will probably select ensemble 5 and 6 , otherwise I'll stick with 1 and 2 for the final submission. 
