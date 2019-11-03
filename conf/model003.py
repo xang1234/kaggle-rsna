@@ -3,7 +3,7 @@ seed = 20
 apex = True
 
 n_fold = 5
-epoch = 6
+epoch = 3
 resume_from = None
 
 batch_size = 20
@@ -31,7 +31,7 @@ model = dict(
 scheduler = dict(
     name='MultiStepLR',
     params=dict(
-        milestones=[1,2,3],
+        milestones=[1,2],
         gamma=1/2,
     ),
 )
